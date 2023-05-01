@@ -1,0 +1,14 @@
+image_name = 'E:/Stomach_Cancer/Shinchon_Severance/Slides/SC-01-0001.svs'
+level = 1
+slide_path = image_name
+patch_path = 'E:/Stomach_Cancer/Shinchon_Severance/'
+
+with openslide.open_slide(slide_path) as slide:
+    width, height = (slide.level_dimensions[level])
+    print(slide.level_dimensions[level])
+
+    patch_BGR = np.array(slide.read_region((0, 0), level, (width, height))) #int(height/2-1200)
+    patch_RGB = cv2.cvtColor(patch_BGR, cv2.COLOR_BGR2RGB)
+    
+    save_path = (patch_path + "SC-01-00012.png")
+    cv2.imwrite(save_path, resize)

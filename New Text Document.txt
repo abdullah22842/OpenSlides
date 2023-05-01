@@ -1,0 +1,83 @@
+def crop_region(slide_loadpath):
+    
+    level = 1
+    
+    slide_list = os.listdir(slide_loadpath)
+    annotation_list = os.listdir(annotation_loadpath)
+    
+#     resize_cropped_regions = []
+#     resize_cropped_masks = []
+
+    patch_id=0
+    
+    for slide_file in slide_list:
+        
+        wsi = os.path.join(slide_loadpath, slide_file)
+    
+        with openslide.open_slide(wsi) as slide:
+            width, height = (slide.level_dimensions[level])
+
+            wsi_BGR = np.array(slide.read_region((0, 0), level, (width, height))) #int(height/2-1200)
+#             wsi_RGB = cv2.cvtColor(wsi_BGR, cv2.COLOR_BGR2RGB)
+    
+        slide_name = os.path.splitext(slide_file)
+        
+        file_name = os.path.join(slide_name[0] + '_labels' + '.png')
+            
+        if file_name in annotation_list:
+
+            print(file_name)
+            
+            region_image_path = os.path.join(region_loadpath, file_name)
+            
+            region_image = cv2.imread(region_image_path, 0)
+            region_binary = cv2.threshold(region_image, 0, 255, cv2.THRESH_BINARY)[1].astype('uint8')
+            region_resize = resize_img2(region_binary)
+            label_object, n_output, n_stats, n_centroids = cv2.connectedComponentsWithStats(region_resize, connectivity=8)
+    
+            annotation_image_path = os.path.join(annotation_loadpath, file_name)
+        
+            mask_image = cv2.imread(annotation_image_path, 0)
+            mask_binary = cv2.threshold(mask_image, 0, 255, cv2.THRESH_BINARY)[1].astype('uint8')
+            mask_resize = resize_img2(mask_binary)
+    
+            for i in range(1, label_object):
+            
+                extension = '.bmp'
+                
+                print(i)
+        
+                for_contour = (n_output==i).astype('uint8')
+        
+                Contours, imgContours = cv2.findContours(for_contour, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    
+                for contour in Contours:
+                    [X, Y, W, H] = cv2.boundingRect(contour)
+    
+                    ##increase bounding box size if required
+                    new_x, new_y = int(X - (W * 0)), int(Y - (H * 0))
+                    new_w, new_h = int(W + (W * (0 + 0))), int(H + (H * (0 + 0)))
+        
+                cropped_region = wsi_BGR[new_y:new_y+new_h, new_x:new_x+new_w]
+                cropped_mask = mask_resize[new_y:new_y+new_h, new_x:new_x+new_w]
+    
+                resize_cropped_region = cv2.resize(cropped_region, (1024, 1024), interpolation = cv2.INTER_AREA)
+                resize_cropped_mask = cv2.resize(cropped_mask, (1024, 1024), interpolation = cv2.INTER_AREA)
+    
+#                 resize_cropped_regions.append(resize_cropped_region)
+#                 resize_cropped_masks.append(resize_cropped_mask)
+            
+                tissue = np.array(resize_cropped_region)
+                tissue = Image.fromarray(tissue)
+                tissue.save(save_tissue+slide_name[0]+"_p"+str(patch_id)+extension,"bmp",quality=100) #Image
+                
+                mask = np.array(resize_cropped_mask)
+                mask = Image.fromarray(mask)
+                mask.save(save_annotation+slide_name[0]+"_p"+str(patch_id)+extension,"bmp",quality=100) #Image
+                
+                patch_id +=1
+        else:
+            
+            pass
+    
+    return resize_cropped_regions, resize_cropped_masks
