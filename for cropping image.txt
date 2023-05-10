@@ -1,0 +1,36 @@
+def crop_region(wsi_path, region_img, mask_img):
+    
+    level = 1
+
+    with openslide.open_slide(wsi_path) as slide:
+        width, height = (slide.level_dimensions[level])
+
+        wsi_BGR = np.array(slide.read_region((0, 0), level, (width, height))) #int(height/2-1200)
+        wsi_RGB = cv2.cvtColor(patch_BGR, cv2.COLOR_BGR2RGB)
+    
+    region = np.invert(region_img)
+    region_binary = cv2.threshold(region, 0, 255, cv2.THRESH_BINARY)[1].astype('uint8')
+    region_resize = resize_img(region_binary)
+    
+    mask = np.invert(mask_img)
+    mask_binary = cv2.threshold(mask, 0, 255, cv2.THRESH_BINARY)[1].astype('uint8')
+    mask_resize = resize_img(mask_binary)
+    
+    Contours, imgContours = cv2.findContours(region_resize, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    
+    for contour in Contours:
+        [X, Y, W, H] = cv2.boundingRect(contour)
+    
+        ##increase bounding box size if required
+        new_x, new_y = int(X - (W * 0)), int(Y - (H * 0))
+        new_w, new_h = int(W + (W * (0 + 0))), int(H + (H * (0 + 0)))
+        
+    cropped_region = wsi_RGB[new_y:new_y+new_h, new_x:new_x+new_w]
+    cropped_mask = mask_resize[new_y:new_y+new_h, new_x:new_x+new_w]
+    
+    resize_cropped_region = cv2.resize(cropped_region, (2048, 2048), interpolation = cv2.INTER_AREA)
+    resize_cropped_mask = cv2.resize(cropped_mask, (2048, 2048), interpolation = cv2.INTER_AREA)
+    
+    
+    
+    return resize_cropped_region, resize_cropped_mask
